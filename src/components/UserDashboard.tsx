@@ -33,6 +33,14 @@ import {
 } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import {
   AlertCircle,
   CreditCard,
   Download,
@@ -43,6 +51,8 @@ import {
   QrCode,
   Ticket,
   User,
+  Upload,
+  FileCheck,
 } from "lucide-react";
 
 interface UserDashboardProps {
@@ -133,6 +143,76 @@ const UserDashboard: React.FC<UserDashboardProps> = ({
   const [activeTab, setActiveTab] = useState("account");
   const [selectedTicket, setSelectedTicket] = useState<TicketItem | null>(null);
   const [showQRDialog, setShowQRDialog] = useState(false);
+  const [showExemptionDialog, setShowExemptionDialog] = useState(false);
+  const [exemptionForm, setExemptionForm] = useState({
+    priorityGroup: "",
+    documents: [] as File[],
+  });
+  const [exemptionStatus, setExemptionStatus] = useState<{
+    type: "success" | "error" | null;
+    message: string;
+  }>({ type: null, message: "" });
+
+  const priorityGroups = [
+    { value: "student", label: "Sinh viên (giảm 50%)", discount: "50%" },
+    { value: "child", label: "Trẻ dưới 6 tuổi (miễn phí)", discount: "100%" },
+    {
+      value: "senior",
+      label: "Người trên 60 tuổi (miễn phí)",
+      discount: "100%",
+    },
+    { value: "veteran", label: "Cựu chiến binh (miễn phí)", discount: "100%" },
+  ];
+
+  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = event.target.files;
+    if (files) {
+      const newFiles = Array.from(files).filter(
+        (file) =>
+          file.type.startsWith("image/") || file.type === "application/pdf",
+      );
+      setExemptionForm((prev) => ({
+        ...prev,
+        documents: [...prev.documents, ...newFiles],
+      }));
+    }
+  };
+
+  const removeDocument = (index: number) => {
+    setExemptionForm((prev) => ({
+      ...prev,
+      documents: prev.documents.filter((_, i) => i !== index),
+    }));
+  };
+
+  const handleExemptionSubmit = () => {
+    if (!exemptionForm.priorityGroup || exemptionForm.documents.length === 0) {
+      setExemptionStatus({
+        type: "error",
+        message: "Vui lòng chọn loại đối tượng và đính kèm ít nhất 1 tài liệu.",
+      });
+      return;
+    }
+
+    // Simulate API call
+    setTimeout(() => {
+      setExemptionStatus({
+        type: "success",
+        message:
+          "Đơn xin miễn/giảm vé đã được nộp thành công. Chúng tôi sẽ xem xét và phản hồi trong vòng 3-5 ngày làm việc.",
+      });
+
+      // Reset form after successful submission
+      setTimeout(() => {
+        setExemptionForm({ priorityGroup: "", documents: [] });
+        setExemptionStatus({ type: null, message: "" });
+        setShowExemptionDialog(false);
+      }, 3000);
+    }, 1000);
+  };
+
+  const isFormValid =
+    exemptionForm.priorityGroup && exemptionForm.documents.length > 0;
 
   return (
     <div className="container mx-auto py-6 bg-white">
@@ -197,13 +277,19 @@ const UserDashboard: React.FC<UserDashboardProps> = ({
                 </div>
               </div>
             </CardContent>
-            <CardFooter>
+            <CardFooter className="flex flex-col gap-2">
               <Button
                 variant="outline"
                 className="w-full"
                 onClick={() => setActiveTab("account")}
               >
                 <Edit className="mr-2 h-4 w-4" /> Chỉnh sửa thông tin
+              </Button>
+              <Button
+                className="w-full bg-blue-600 hover:bg-blue-700"
+                onClick={() => setShowExemptionDialog(true)}
+              >
+                <FileCheck className="mr-2 h-4 w-4" /> Nộp đơn xin miễn/giảm vé
               </Button>
             </CardFooter>
           </Card>
@@ -471,6 +557,162 @@ const UserDashboard: React.FC<UserDashboardProps> = ({
           )}
           <DialogFooter>
             <Button onClick={() => setShowQRDialog(false)}>Đóng</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={showExemptionDialog} onOpenChange={setShowExemptionDialog}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>Nộp đơn xin miễn/giảm vé</DialogTitle>
+            <DialogDescription>
+              Vui lòng chọn loại đối tượng ưu tiên và đính kèm tài liệu chứng
+              minh
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-6">
+            {exemptionStatus.type && (
+              <Alert
+                className={
+                  exemptionStatus.type === "success"
+                    ? "border-green-200 bg-green-50"
+                    : "border-red-200 bg-red-50"
+                }
+              >
+                <AlertCircle
+                  className={`h-4 w-4 ${exemptionStatus.type === "success" ? "text-green-600" : "text-red-600"}`}
+                />
+                <AlertDescription
+                  className={
+                    exemptionStatus.type === "success"
+                      ? "text-green-800"
+                      : "text-red-800"
+                  }
+                >
+                  {exemptionStatus.message}
+                </AlertDescription>
+              </Alert>
+            )}
+
+            <div className="space-y-2">
+              <Label htmlFor="priority-group">Loại đối tượng ưu tiên *</Label>
+              <Select
+                value={exemptionForm.priorityGroup}
+                onValueChange={(value) =>
+                  setExemptionForm((prev) => ({
+                    ...prev,
+                    priorityGroup: value,
+                  }))
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Chọn loại đối tượng" />
+                </SelectTrigger>
+                <SelectContent>
+                  {priorityGroups.map((group) => (
+                    <SelectItem key={group.value} value={group.value}>
+                      {group.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="documents">Tài liệu chứng minh *</Label>
+              <div className="space-y-3">
+                <div className="flex items-center justify-center w-full">
+                  <label
+                    htmlFor="file-upload"
+                    className="flex flex-col items-center justify-center w-full h-32 border-2 border-gray-300 border-dashed rounded-lg cursor-pointer bg-gray-50 hover:bg-gray-100"
+                  >
+                    <div className="flex flex-col items-center justify-center pt-5 pb-6">
+                      <Upload className="w-8 h-8 mb-4 text-gray-500" />
+                      <p className="mb-2 text-sm text-gray-500">
+                        <span className="font-semibold">Nhấn để tải lên</span>{" "}
+                        hoặc kéo thả file
+                      </p>
+                      <p className="text-xs text-gray-500">
+                        PNG, JPG, PDF (tối đa 10MB mỗi file)
+                      </p>
+                    </div>
+                    <input
+                      id="file-upload"
+                      type="file"
+                      className="hidden"
+                      multiple
+                      accept="image/*,.pdf"
+                      onChange={handleFileUpload}
+                    />
+                  </label>
+                </div>
+
+                {exemptionForm.documents.length > 0 && (
+                  <div className="space-y-2">
+                    <p className="text-sm font-medium">Tài liệu đã chọn:</p>
+                    {exemptionForm.documents.map((file, index) => (
+                      <div
+                        key={index}
+                        className="flex items-center justify-between p-2 bg-gray-50 rounded-md"
+                      >
+                        <div className="flex items-center space-x-2">
+                          <FileText className="w-4 h-4 text-gray-500" />
+                          <span className="text-sm truncate max-w-[200px]">
+                            {file.name}
+                          </span>
+                          <span className="text-xs text-gray-500">
+                            ({(file.size / 1024 / 1024).toFixed(2)} MB)
+                          </span>
+                        </div>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => removeDocument(index)}
+                          className="text-red-500 hover:text-red-700"
+                        >
+                          ×
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {exemptionForm.priorityGroup && (
+              <div className="p-3 bg-blue-50 rounded-md">
+                <p className="text-sm text-blue-800">
+                  <strong>Mức ưu đãi:</strong>{" "}
+                  {priorityGroups.find(
+                    (g) => g.value === exemptionForm.priorityGroup,
+                  )?.discount === "100%"
+                    ? "Miễn phí"
+                    : "Giảm 50%"}
+                </p>
+              </div>
+            )}
+          </div>
+
+          <DialogFooter className="flex flex-col sm:flex-row gap-2">
+            <Button
+              variant="outline"
+              onClick={() => {
+                setShowExemptionDialog(false);
+                setExemptionForm({ priorityGroup: "", documents: [] });
+                setExemptionStatus({ type: null, message: "" });
+              }}
+              className="w-full sm:w-auto"
+            >
+              Hủy
+            </Button>
+            <Button
+              onClick={handleExemptionSubmit}
+              disabled={!isFormValid || exemptionStatus.type === "success"}
+              className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700"
+            >
+              {exemptionStatus.type === "success" ? "Đã nộp" : "Nộp đơn"}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
