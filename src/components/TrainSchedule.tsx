@@ -304,25 +304,26 @@ const TrainSchedule = () => {
             <CardContent>
               <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
                 {getCurrentSchedules().map((schedule, index) => (
-                  <Dialog
+                  <Button
                     key={index}
-                    open={isDialogOpen && selectedSchedule === schedule}
-                    onOpenChange={setIsDialogOpen}
+                    variant="outline"
+                    className="h-16 text-lg font-semibold hover:bg-primary hover:text-primary-foreground transition-colors"
+                    onClick={() => handleTimeClick(schedule)}
                   >
-                    <DialogTrigger asChild>
-                      <Button
-                        variant="outline"
-                        className="h-16 text-lg font-semibold hover:bg-primary hover:text-primary-foreground transition-colors"
-                        onClick={() => handleTimeClick(schedule)}
-                      >
-                        {schedule.departureTime}
-                      </Button>
-                    </DialogTrigger>
-                    <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+                    {schedule.departureTime}
+                  </Button>
+                ))}
+              </div>
+
+              {/* Schedule Details Dialog */}
+              <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+                <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+                  {selectedSchedule && (
+                    <>
                       <DialogHeader>
                         <DialogTitle className="flex items-center gap-2">
                           <Train className="h-5 w-5" />
-                          {t.scheduleDetails} - {schedule.departureTime}
+                          {t.scheduleDetails} - {selectedSchedule.departureTime}
                         </DialogTitle>
                         <DialogDescription>
                           {selectedDirection === "ben-thanh-to-suoi-tien"
@@ -339,23 +340,25 @@ const TrainSchedule = () => {
                             </TableRow>
                           </TableHeader>
                           <TableBody>
-                            {schedule.stations.map((entry, stationIndex) => (
-                              <TableRow key={stationIndex}>
-                                <TableCell className="font-medium">
-                                  {getStationName(entry.stationId)}
-                                </TableCell>
-                                <TableCell className="text-primary font-semibold">
-                                  {entry.arrivalTime}
-                                </TableCell>
-                              </TableRow>
-                            ))}
+                            {selectedSchedule.stations.map(
+                              (entry, stationIndex) => (
+                                <TableRow key={stationIndex}>
+                                  <TableCell className="font-medium">
+                                    {getStationName(entry.stationId)}
+                                  </TableCell>
+                                  <TableCell className="text-primary font-semibold">
+                                    {entry.arrivalTime}
+                                  </TableCell>
+                                </TableRow>
+                              ),
+                            )}
                           </TableBody>
                         </Table>
                       </div>
-                    </DialogContent>
-                  </Dialog>
-                ))}
-              </div>
+                    </>
+                  )}
+                </DialogContent>
+              </Dialog>
             </CardContent>
           </Card>
         ) : (
