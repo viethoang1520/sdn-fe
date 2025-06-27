@@ -9,6 +9,9 @@ import {
   QrCode,
   User,
   Clock,
+  LogOut,
+  Settings,
+  UserCircle,
 } from "lucide-react";
 import { Button } from "./ui/button";
 import {
@@ -21,10 +24,30 @@ import {
 } from "./ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs";
 import { Badge } from "./ui/badge";
+import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "./ui/dropdown-menu";
 
 const Home = () => {
   const [language, setLanguage] = useState<"vi" | "en">("vi");
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+  // Mock user state - in a real app, this would come from authentication context
+  const [user, setUser] = useState<{
+    name: string;
+    email: string;
+    avatar?: string;
+  } | null>({
+    name: "Nguyễn Văn A",
+    email: "nguyen.van.a@example.com",
+    avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=NguyenVanA",
+  });
 
   const toggleLanguage = () => {
     setLanguage(language === "vi" ? "en" : "vi");
@@ -32,6 +55,20 @@ const Home = () => {
 
   const toggleMobileMenu = () => {
     setMobileMenuOpen(!mobileMenuOpen);
+  };
+
+  const handleLogout = () => {
+    setUser(null);
+    console.log("User logged out");
+  };
+
+  const getInitials = (name: string) => {
+    return name
+      .split(" ")
+      .map((word) => word.charAt(0))
+      .join("")
+      .toUpperCase()
+      .slice(0, 2);
   };
 
   const translations = {
@@ -76,6 +113,10 @@ const Home = () => {
       digitalTickets: "Vé điện tử",
       discounts: "Giảm giá ưu tiên",
       new: "Mới",
+      welcome: "Xin chào",
+      myAccount: "Tài khoản của tôi",
+      settings: "Cài đặt",
+      logout: "Đăng xuất",
     },
     en: {
       navHome: "Home",
@@ -118,6 +159,10 @@ const Home = () => {
       digitalTickets: "Digital Tickets",
       discounts: "Priority Discounts",
       new: "New",
+      welcome: "Welcome",
+      myAccount: "My Account",
+      settings: "Settings",
+      logout: "Logout",
     },
   };
 
@@ -170,9 +215,65 @@ const Home = () => {
               </span>
             </Button>
 
-            <Button variant="outline" asChild className="hidden md:flex">
-              <Link to="/login">{t.loginRegister}</Link>
-            </Button>
+            {user ? (
+              <div className="flex items-center gap-3">
+                <span className="hidden md:block text-sm font-medium text-foreground">
+                  {t.welcome}, {user.name.split(" ")[0]}
+                </span>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      className="relative h-10 w-10 rounded-full"
+                    >
+                      <Avatar className="h-10 w-10">
+                        <AvatarImage src={user.avatar} alt={user.name} />
+                        <AvatarFallback className="bg-primary/10 text-primary font-semibold">
+                          {getInitials(user.name)}
+                        </AvatarFallback>
+                      </Avatar>
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent className="w-56" align="end" forceMount>
+                    <DropdownMenuLabel className="font-normal">
+                      <div className="flex flex-col space-y-1">
+                        <p className="text-sm font-medium leading-none">
+                          {user.name}
+                        </p>
+                        <p className="text-xs leading-none text-muted-foreground">
+                          {user.email}
+                        </p>
+                      </div>
+                    </DropdownMenuLabel>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem asChild>
+                      <Link to="/account" className="flex items-center">
+                        <UserCircle className="mr-2 h-4 w-4" />
+                        <span>{t.myAccount}</span>
+                      </Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem asChild>
+                      <Link to="/settings" className="flex items-center">
+                        <Settings className="mr-2 h-4 w-4" />
+                        <span>{t.settings}</span>
+                      </Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem
+                      onClick={handleLogout}
+                      className="text-red-600 focus:text-red-600"
+                    >
+                      <LogOut className="mr-2 h-4 w-4" />
+                      <span>{t.logout}</span>
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
+            ) : (
+              <Button variant="outline" asChild className="hidden md:flex">
+                <Link to="/auth">{t.loginRegister}</Link>
+              </Button>
+            )}
 
             <Button
               variant="ghost"
@@ -212,12 +313,52 @@ const Home = () => {
             >
               {t.navAccount} <ChevronRight className="h-4 w-4" />
             </Link>
-            <Link
-              to="/login"
-              className="flex items-center justify-between p-2 text-foreground font-medium border-b"
-            >
-              {t.loginRegister} <ChevronRight className="h-4 w-4" />
-            </Link>
+            {user ? (
+              <div className="p-2 border-b">
+                <div className="flex items-center gap-3 mb-3">
+                  <Avatar className="h-8 w-8">
+                    <AvatarImage src={user.avatar} alt={user.name} />
+                    <AvatarFallback className="bg-primary/10 text-primary font-semibold text-xs">
+                      {getInitials(user.name)}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div>
+                    <p className="text-sm font-medium">{user.name}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {user.email}
+                    </p>
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Link
+                    to="/account"
+                    className="flex items-center justify-between p-2 text-foreground font-medium hover:bg-muted rounded-md"
+                  >
+                    <span className="flex items-center gap-2">
+                      <UserCircle className="h-4 w-4" />
+                      {t.myAccount}
+                    </span>
+                    <ChevronRight className="h-4 w-4" />
+                  </Link>
+                  <button
+                    onClick={handleLogout}
+                    className="flex items-center justify-between p-2 text-red-600 font-medium hover:bg-red-50 rounded-md w-full text-left"
+                  >
+                    <span className="flex items-center gap-2">
+                      <LogOut className="h-4 w-4" />
+                      {t.logout}
+                    </span>
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <Link
+                to="/auth"
+                className="flex items-center justify-between p-2 text-foreground font-medium border-b"
+              >
+                {t.loginRegister} <ChevronRight className="h-4 w-4" />
+              </Link>
+            )}
           </nav>
         </div>
       )}
