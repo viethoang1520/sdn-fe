@@ -131,28 +131,53 @@ const TicketPurchaseFlow: React.FC<TicketPurchaseFlowProps> = ({
   const [isProcessing, setIsProcessing] = useState<boolean>(false);
   const [purchaseComplete, setPurchaseComplete] = useState<boolean>(false);
 
-  const steps = [
-    isEnglish ? "Select Ticket Type" : "Chọn Loại Vé",
-    isEnglish ? "Select Stations" : "Chọn Ga",
-    isEnglish ? "Apply Discount" : "Áp Dụng Giảm Giá",
-    isEnglish ? "Payment" : "Thanh Toán",
-    isEnglish ? "Confirmation" : "Xác Nhận",
-  ];
+  const getSteps = () => {
+    const baseSteps = [isEnglish ? "Select Ticket Type" : "Chọn Loại Vé"];
+
+    // Only add station selection for single-trip tickets
+    if (selectedTicketType === "single-trip") {
+      baseSteps.push(isEnglish ? "Select Stations" : "Chọn Ga");
+    }
+
+    baseSteps.push(
+      isEnglish ? "Payment" : "Thanh Toán",
+      isEnglish ? "Confirmation" : "Xác Nhận",
+    );
+
+    return baseSteps;
+  };
+
+  const steps = getSteps();
 
   const handleNext = () => {
     if (currentStep < steps.length - 1) {
-      setCurrentStep(currentStep + 1);
+      // Skip station selection for non-single-trip tickets
+      if (selectedTicketType !== "single-trip" && currentStep === 0) {
+        setCurrentStep(currentStep + 2); // Skip to discount step
+      } else {
+        setCurrentStep(currentStep + 1);
+      }
     }
   };
 
   const handleBack = () => {
     if (currentStep > 0) {
-      setCurrentStep(currentStep - 1);
+      // Skip station selection when going back for non-single-trip tickets
+      if (selectedTicketType !== "single-trip" && currentStep === 2) {
+        setCurrentStep(currentStep - 2); // Skip back to ticket type step
+      } else {
+        setCurrentStep(currentStep - 1);
+      }
     }
   };
 
   const handleTicketTypeSelect = (ticketId: string) => {
     setSelectedTicketType(ticketId);
+    // Reset station selection when changing ticket type
+    if (ticketId !== "single-trip") {
+      setOriginStation("");
+      setDestinationStation("");
+    }
   };
 
   const handleStationSelect = (
@@ -200,14 +225,7 @@ const TicketPurchaseFlow: React.FC<TicketPurchaseFlowProps> = ({
     );
     if (!selectedTicket) return 0;
 
-    let fare = selectedTicket.price;
-
-    // Apply discount if verified
-    if (discountApplied && selectedTicket.id === "monthly") {
-      fare = fare * 0.5; // 50% discount for students on monthly passes
-    }
-
-    return fare;
+    return selectedTicket.price;
   };
 
   const formatCurrency = (amount: number) => {
@@ -220,8 +238,11 @@ const TicketPurchaseFlow: React.FC<TicketPurchaseFlowProps> = ({
   };
 
   const renderStepContent = () => {
-    switch (currentStep) {
-      case 0: // Ticket Type Selection
+    const currentStepName = steps[currentStep];
+
+    switch (currentStepName) {
+      case isEnglish ? "Select Ticket Type" : "Chọn Loại Vé":
+        // Ticket Type Selection
         return (
           <div className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -249,8 +270,8 @@ const TicketPurchaseFlow: React.FC<TicketPurchaseFlowProps> = ({
             </div>
           </div>
         );
-
-      case 1: // Station Selection
+      case isEnglish ? "Select Stations" : "Chọn Ga":
+        // Station Selection (only for single-trip tickets)
         return (
           <div className="space-y-6">
             <div className="space-y-4">
@@ -329,103 +350,8 @@ const TicketPurchaseFlow: React.FC<TicketPurchaseFlowProps> = ({
             )}
           </div>
         );
-
-      case 2: // Discount Application
-        return (
-          <div className="space-y-6">
-            <div className="rounded-lg border p-4">
-              <h3 className="font-medium mb-2">
-                {isEnglish
-                  ? "Priority Group Verification"
-                  : "Xác Minh Nhóm Ưu Tiên"}
-              </h3>
-              <p className="text-sm text-muted-foreground mb-4">
-                {isEnglish
-                  ? "Enter your CCCD number to verify eligibility for student, elderly or disabled discounts."
-                  : "Nhập số CCCD của bạn để xác minh tư cách sinh viên, người cao tuổi hoặc người khuyết tật."}
-              </p>
-
-              <div className="space-y-4">
-                <div>
-                  <Label htmlFor="cccd">
-                    {isEnglish ? "CCCD Number" : "Số CCCD"}
-                  </Label>
-                  <Input
-                    id="cccd"
-                    placeholder={
-                      isEnglish ? "Enter 12-digit CCCD" : "Nhập CCCD 12 số"
-                    }
-                    value={cccdNumber}
-                    onChange={(e) =>
-                      setCccdNumber(
-                        e.target.value.replace(/\D/g, "").slice(0, 12),
-                      )
-                    }
-                  />
-                  <p className="text-xs text-muted-foreground mt-1">
-                    {isEnglish
-                      ? "Format: 012345678901"
-                      : "Định dạng: 012345678901"}
-                  </p>
-                </div>
-
-                <Button
-                  onClick={handleCccdSubmit}
-                  disabled={cccdNumber.length !== 12 || discountApplied}
-                >
-                  {isEnglish ? "Verify" : "Xác Minh"}
-                </Button>
-
-                {discountApplied && (
-                  <Alert className="bg-green-50 border-green-200">
-                    <Check className="h-4 w-4 text-green-600" />
-                    <AlertTitle className="text-green-800">
-                      {isEnglish ? "Discount Applied" : "Đã Áp Dụng Giảm Giá"}
-                    </AlertTitle>
-                    <AlertDescription className="text-green-700">
-                      {isEnglish
-                        ? "Your student status has been verified. 50% discount will be applied to monthly passes."
-                        : "Tư cách sinh viên của bạn đã được xác minh. Giảm giá 50% sẽ được áp dụng cho vé tháng."}
-                    </AlertDescription>
-                  </Alert>
-                )}
-              </div>
-            </div>
-
-            <div className="rounded-lg border p-4">
-              <h3 className="font-medium mb-2">
-                {isEnglish ? "Fare Summary" : "Tóm Tắt Giá Vé"}
-              </h3>
-              <div className="space-y-2">
-                <div className="flex justify-between">
-                  <span>{isEnglish ? "Ticket Type" : "Loại Vé"}</span>
-                  <span>
-                    {isEnglish
-                      ? ticketTypes.find((t) => t.id === selectedTicketType)
-                          ?.nameEn
-                      : ticketTypes.find((t) => t.id === selectedTicketType)
-                          ?.name}
-                  </span>
-                </div>
-                {discountApplied && selectedTicketType === "monthly" && (
-                  <div className="flex justify-between text-green-600">
-                    <span>
-                      {isEnglish ? "Student Discount" : "Giảm Giá Sinh Viên"}
-                    </span>
-                    <span>-50%</span>
-                  </div>
-                )}
-                <Separator />
-                <div className="flex justify-between font-medium">
-                  <span>{isEnglish ? "Total" : "Tổng Cộng"}</span>
-                  <span>{formatCurrency(calculateFare())}</span>
-                </div>
-              </div>
-            </div>
-          </div>
-        );
-
-      case 3: // Payment
+      case isEnglish ? "Payment" : "Thanh Toán":
+        // Payment
         return (
           <div className="space-y-6">
             <div>
@@ -471,14 +397,6 @@ const TicketPurchaseFlow: React.FC<TicketPurchaseFlowProps> = ({
                             ?.name}
                     </span>
                   </div>
-                  <div className="flex justify-between">
-                    <span>{isEnglish ? "Route" : "Tuyến Đường"}</span>
-                    <span>
-                      {isEnglish
-                        ? `${stations.find((s) => s.id === originStation)?.nameEn} → ${stations.find((s) => s.id === destinationStation)?.nameEn}`
-                        : `${stations.find((s) => s.id === originStation)?.name} → ${stations.find((s) => s.id === destinationStation)?.name}`}
-                    </span>
-                  </div>
                   {discountApplied && selectedTicketType === "monthly" && (
                     <div className="flex justify-between text-green-600">
                       <span>
@@ -491,18 +409,6 @@ const TicketPurchaseFlow: React.FC<TicketPurchaseFlowProps> = ({
                   <div className="flex justify-between font-medium">
                     <span>{isEnglish ? "Total" : "Tổng Cộng"}</span>
                     <span>{formatCurrency(calculateFare())}</span>
-                  </div>
-                  <div className="flex justify-between text-sm text-muted-foreground">
-                    <span>
-                      {isEnglish ? "Payment Method" : "Phương Thức Thanh Toán"}
-                    </span>
-                    <span>
-                      {
-                        paymentMethods.find(
-                          (m) => m.id === selectedPaymentMethod,
-                        )?.name
-                      }
-                    </span>
                   </div>
                 </div>
               </div>
@@ -520,8 +426,8 @@ const TicketPurchaseFlow: React.FC<TicketPurchaseFlowProps> = ({
             )}
           </div>
         );
-
-      case 4: // Confirmation
+      case isEnglish ? "Confirmation" : "Xác Nhận":
+        // Confirmation
         return (
           <div className="space-y-6 text-center">
             <div className="mx-auto rounded-full bg-green-100 p-3 w-16 h-16 flex items-center justify-center">
@@ -556,16 +462,30 @@ const TicketPurchaseFlow: React.FC<TicketPurchaseFlowProps> = ({
               </div>
 
               <div className="space-y-2 text-sm">
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">
-                    {isEnglish ? "Route" : "Tuyến Đường"}
-                  </span>
-                  <span className="font-medium">
-                    {isEnglish
-                      ? `${stations.find((s) => s.id === originStation)?.nameEn} → ${stations.find((s) => s.id === destinationStation)?.nameEn}`
-                      : `${stations.find((s) => s.id === originStation)?.name} → ${stations.find((s) => s.id === destinationStation)?.name}`}
-                  </span>
-                </div>
+                {selectedTicketType === "single-trip" &&
+                  originStation &&
+                  destinationStation && (
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">
+                        {isEnglish ? "Route" : "Tuyến Đường"}
+                      </span>
+                      <span className="font-medium">
+                        {isEnglish
+                          ? `${stations.find((s) => s.id === originStation)?.nameEn} → ${stations.find((s) => s.id === destinationStation)?.nameEn}`
+                          : `${stations.find((s) => s.id === originStation)?.name} → ${stations.find((s) => s.id === destinationStation)?.name}`}
+                      </span>
+                    </div>
+                  )}
+                {selectedTicketType !== "single-trip" && (
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">
+                      {isEnglish ? "Coverage" : "Phạm Vi"}
+                    </span>
+                    <span className="font-medium">
+                      {isEnglish ? "All stations" : "Tất cả các ga"}
+                    </span>
+                  </div>
+                )}
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">
                     {isEnglish ? "Price" : "Giá Vé"}
@@ -606,7 +526,6 @@ const TicketPurchaseFlow: React.FC<TicketPurchaseFlowProps> = ({
             </div>
           </div>
         );
-
       default:
         return null;
     }
@@ -662,15 +581,20 @@ const TicketPurchaseFlow: React.FC<TicketPurchaseFlowProps> = ({
           <Button
             onClick={handleNext}
             disabled={
-              (currentStep === 0 && !selectedTicketType) ||
-              (currentStep === 1 && (!originStation || !destinationStation)) ||
-              (currentStep === 3 && (!selectedPaymentMethod || isProcessing))
+              (steps[currentStep] ===
+                (isEnglish ? "Select Ticket Type" : "Chọn Loại Vé") &&
+                !selectedTicketType) ||
+              (steps[currentStep] ===
+                (isEnglish ? "Select Stations" : "Chọn Ga") &&
+                (!originStation || !destinationStation)) ||
+              (steps[currentStep] === (isEnglish ? "Payment" : "Thanh Toán") &&
+                (!selectedPaymentMethod || isProcessing))
             }
           >
             {isEnglish ? "Continue" : "Tiếp Tục"}
             <ChevronRight className="ml-2 h-4 w-4" />
           </Button>
-        ) : currentStep === 3 ? (
+        ) : steps[currentStep] === (isEnglish ? "Payment" : "Thanh Toán") ? (
           <Button
             onClick={handlePaymentSubmit}
             disabled={!selectedPaymentMethod || isProcessing}
